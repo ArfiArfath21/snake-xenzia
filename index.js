@@ -4,8 +4,15 @@ const ctx = canvas.getContext('2d');
 const scoreElement = document.getElementById('score');
 const finalScoreElement = document.getElementById('final-score');
 const gameOverElement = document.getElementById('game-over');
+const hideDiv = document.getElementById('hide-in-game');
 const startButton = document.getElementById('start-button');
 const restartButton = document.getElementById('restart-button');
+const foodSound = document.getElementById('food-sound');
+
+// Modal elements
+const infoToggle = document.getElementById('info-toggle');
+const instructionsModal = document.getElementById('instructions-modal');
+const closeModal = document.querySelector('.close-modal');
 
 // Game settings
 const gridSize = 20;
@@ -47,6 +54,13 @@ function initGame() {
 
     // Hide start button
     startButton.style.display = 'none';
+    hideDiv.style.display = 'none';
+    
+    // Reinitialize joystick to make sure it's properly centered
+    if (window.matchMedia('(max-width: 768px)').matches || 
+        window.matchMedia('(pointer: coarse)').matches) {
+        setTimeout(initJoystick, 100); // Short delay to ensure DOM is updated
+    }
 }
 
 // Generate food at random position
@@ -85,6 +99,9 @@ function updateGame() {
 
     // Check if food is eaten
     if (snake[0].x === food.x && snake[0].y === food.y) {
+        // Play pop sound when food is eaten
+        playFoodSound();
+
         // Grow snake (don't remove tail)
         generateFood();
         score += 10;
@@ -104,6 +121,18 @@ function updateGame() {
 
     // Draw game
     drawGame();
+}
+
+// Function to play the food sound
+function playFoodSound() {
+    // Reset the audio to start from the beginning
+    foodSound.currentTime = 0;
+
+    // Play the sound
+    foodSound.play().catch(e => {
+        // Handle any errors (like autoplay restrictions)
+        console.log('Error playing sound:', e);
+    });
 }
 
 // Move snake based on direction
@@ -222,6 +251,7 @@ function gameOver() {
     finalScoreElement.textContent = score;
     gameOverElement.style.display = 'block';
     startButton.style.display = 'block';
+    hideDiv.style.display = 'block';
 }
 
 // Handle keyboard input
@@ -318,6 +348,215 @@ gameContainer.addEventListener('mouseup', function(e) {
     // Only process as swipe if distance is significant
     if (distance > 20) {
         handleSwipe();
+    }
+});
+
+// =============== Modal Controls ================
+// Show instructions modal when info icon is clicked
+infoToggle.addEventListener('click', function() {
+    instructionsModal.style.display = 'block';
+});
+
+// Close modal when X is clicked
+closeModal.addEventListener('click', function() {
+    instructionsModal.style.display = 'none';
+});
+
+// Close modal when clicking outside the modal content
+window.addEventListener('click', function(event) {
+    if (event.target === instructionsModal) {
+        instructionsModal.style.display = 'none';
+    }
+});
+
+// =============== Joystick Code ================
+const joystickThumb = document.getElementById('joystick-thumb');
+const joystickBase = document.getElementById('joystick-base');
+const joystickContainer = document.getElementById('joystick-container');
+
+// Joystick state variables
+let joystickActive = false;
+let joystickCenterX = 0;
+let joystickCenterY = 0;
+let joystickCurrentX = 0;
+let joystickCurrentY = 0;
+let lastJoystickDirection = '';
+let joystickUpdateInterval;
+
+// Initialize joystick positions
+function initJoystick() {
+    // Make sure the joystick container is visible for correct measurements
+    const isMobile = window.matchMedia('(max-width: 768px)').matches || 
+                    window.matchMedia('(pointer: coarse)').matches;
+    
+    if (isMobile) {
+        joystickContainer.style.display = 'block';
+    }
+    
+    // Get the position of the joystick base
+    const baseRect = joystickBase.getBoundingClientRect();
+    joystickCenterX = baseRect.left + baseRect.width / 2;
+    joystickCenterY = baseRect.top + baseRect.height / 2;
+    
+    // Center the thumb initially
+    joystickThumb.style.left = '50%';
+    joystickThumb.style.top = '50%';
+    
+    // Reset current position to center
+    joystickCurrentX = joystickCenterX;
+    joystickCurrentY = joystickCenterY;
+}
+
+// Update the joystick thumb position
+function updateJoystickThumbPosition(x, y) {
+    const baseRect = joystickBase.getBoundingClientRect();
+    const radius = baseRect.width / 2;
+    
+    // Calculate distance from center
+    const deltaX = x - joystickCenterX;
+    const deltaY = y - joystickCenterY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // If the thumb is dragged beyond the base radius, limit it to the edge
+    if (distance > radius) {
+        const angle = Math.atan2(deltaY, deltaX);
+        x = joystickCenterX + Math.cos(angle) * radius;
+        y = joystickCenterY + Math.sin(angle) * radius;
+    }
+    
+    // Calculate position relative to base center
+    const relativeX = ((x - joystickCenterX) / radius * 50) + 50;
+    const relativeY = ((y - joystickCenterY) / radius * 50) + 50;
+    
+    // Apply position in percentage relative to the base center
+    joystickThumb.style.left = `${relativeX}%`;
+    joystickThumb.style.top = `${relativeY}%`;
+    
+    // Store current position
+    joystickCurrentX = x;
+    joystickCurrentY = y;
+}
+
+// Update game direction based on joystick position
+function updateDirectionFromJoystick() {
+    if (!joystickActive || !gameRunning) return;
+    
+    const deltaX = joystickCurrentX - joystickCenterX;
+    const deltaY = joystickCurrentY - joystickCenterY;
+    
+    // Only change direction if joystick is moved significantly
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const threshold = 10; // Minimum distance to consider a direction change
+    
+    if (distance < threshold) return;
+    
+    // Determine the dominant axis
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal movement is dominant
+        if (deltaX > 0 && direction !== 'left') {
+            nextDirection = 'right';
+        } else if (deltaX < 0 && direction !== 'right') {
+            nextDirection = 'left';
+        }
+    } else {
+        // Vertical movement is dominant
+        if (deltaY > 0 && direction !== 'up') {
+            nextDirection = 'down';
+        } else if (deltaY < 0 && direction !== 'down') {
+            nextDirection = 'up';
+        }
+    }
+}
+
+// Reset the joystick to center position
+function resetJoystick() {
+    joystickThumb.style.left = '50%';
+    joystickThumb.style.top = '50%';
+    joystickCurrentX = joystickCenterX;
+    joystickCurrentY = joystickCenterY;
+}
+
+// Event listeners for joystick
+joystickBase.addEventListener('touchstart', function(e) {
+    joystickActive = true;
+    updateJoystickThumbPosition(e.touches[0].clientX, e.touches[0].clientY);
+    
+    // Start updating direction at a regular interval
+    if (!joystickUpdateInterval) {
+        joystickUpdateInterval = setInterval(updateDirectionFromJoystick, 100);
+    }
+    
+    e.preventDefault();
+}, { passive: false });
+
+joystickBase.addEventListener('touchmove', function(e) {
+    if (joystickActive) {
+        updateJoystickThumbPosition(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+    }
+}, { passive: false });
+
+function endJoystickMovement() {
+    joystickActive = false;
+    
+    // Reset thumb position to center
+    resetJoystick();
+    
+    // Stop the direction update interval
+    if (joystickUpdateInterval) {
+        clearInterval(joystickUpdateInterval);
+        joystickUpdateInterval = null;
+    }
+}
+
+joystickBase.addEventListener('touchend', function(e) {
+    endJoystickMovement();
+    e.preventDefault();
+}, { passive: false });
+
+joystickBase.addEventListener('touchcancel', function(e) {
+    endJoystickMovement();
+    e.preventDefault();
+}, { passive: false });
+
+// Also add support for mouse control on desktop for testing
+joystickBase.addEventListener('mousedown', function(e) {
+    joystickActive = true;
+    updateJoystickThumbPosition(e.clientX, e.clientY);
+    
+    // Start updating direction
+    if (!joystickUpdateInterval) {
+        joystickUpdateInterval = setInterval(updateDirectionFromJoystick, 100);
+    }
+});
+
+document.addEventListener('mousemove', function(e) {
+    if (joystickActive) {
+        updateJoystickThumbPosition(e.clientX, e.clientY);
+    }
+});
+
+document.addEventListener('mouseup', function() {
+    if (joystickActive) {
+        endJoystickMovement();
+    }
+});
+
+// Initialize joystick on window load
+window.addEventListener('load', function() {
+    // Check if it's a mobile device
+    if (window.matchMedia('(max-width: 768px)').matches || 
+        window.matchMedia('(pointer: coarse)').matches) {
+        // Wait a short moment for layout to complete
+        setTimeout(initJoystick, 200);
+    }
+});
+
+// Handle window resize to reposition joystick
+window.addEventListener('resize', function() {
+    if (window.matchMedia('(max-width: 768px)').matches || 
+        window.matchMedia('(pointer: coarse)').matches) {
+        initJoystick();
     }
 });
 

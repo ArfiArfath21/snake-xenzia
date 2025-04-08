@@ -8,28 +8,54 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
 </head>
 <body>
-    <h1>Snake Xenzia</h1>
-    <div id="game-container">
-        <canvas id="game-board" width="400" height="400"></canvas>
-        <div id="game-over">
-            <h2>Game Over!</h2>
-            <p>Your score: <span id="final-score">0</span></p>
-            <button id="restart-button">Play Again</button>
-        </div>
+
+<h1 class="header">Snake Xenzia</h1>
+
+<div id="game-container">
+    <canvas id="game-board" width="400" height="400"></canvas>
+    <div id="game-over">
+        <h2>Game Over!</h2>
+        <p>Your score: <span id="final-score">0</span></p>
+        <button id="restart-button">Play Again</button>
     </div>
-    <div id="score">Score: 0</div>
+</div>
+<div id="score">Score: 0</div>
+<div id="hide-in-game">
     <button id="start-button">Start Game</button>
-    
-    <div id="swipe-info">
-        Swipe in any direction to control the snake
+    <div id="info-toggle">
+        <span class="info-icon">ℹ️</span>
     </div>
-    
-    <div id="instructions">
+</div>
+
+
+<div id="swipe-info">
+    Swipe in any direction to control the snake
+</div>
+
+<!-- Joystick container - visible by default on mobile -->
+<div id="joystick-container">
+    <div id="joystick-base">
+        <div id="joystick-thumb"></div>
+    </div>
+</div>
+
+<!-- Instructions modal that appears when the info icon is clicked -->
+<div id="instructions-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3>How to Play</h3>
         <p>Use the arrow keys to control the snake.</p>
-        <p>On mobile devices, swipe to change direction.</p>
+        <p>On mobile devices, swipe to change direction or use the joystick.</p>
         <p>Collect the red food to grow your snake and increase your score.</p>
         <p>Don't hit yourself! You can pass through the walls and appear on the other side.</p>
     </div>
-    <script src="index.js"></script>
+</div>
+
+<!-- Audio element for pop sound -->
+<audio id="food-sound" preload="auto">
+    <source src="pop-sound.mp3" type="audio/mpeg">
+</audio>
+
+<script src="index.js"></script>
 </body>
 </html>
